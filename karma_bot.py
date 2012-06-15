@@ -185,8 +185,11 @@ class KarmaBot(irc.IRCClient):
             if target:
                 if user == target:
                     self.msg(user, "Hey! It's not cool giving yourself points")
-                self.points[target] += points
-                print "Match! {0} points for {1}".format(points, target)
+                if self.points[target] + points > 2**32-1:
+                    self.msg(user, "{0} has too many points Oo".format(user))
+                else:
+                    self.points[target] += points
+                    print "Match! {0} points for {1}".format(points, target)
 
     ####################
     # irc callbacks
