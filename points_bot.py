@@ -57,7 +57,8 @@ class PointLogger:
     def close(self):
         self.db.close()
     def leaderboard(self):
-        things = [(u.name,u.points) for u in self.db.query(User).all()]
+        things = [(u.name,u.points) for u in self.db.query(User).all()
+                  if u.points]
         return reversed(sorted(things, key=itemgetter(1)))
 
 HELP = """ABOUT:
@@ -74,6 +75,8 @@ To see who has points, message me with:
 \t\t- to see who's doing what
 \thelp
 \t\t- to see this message
+\t<name>
+\t\t- to see their current score
 \t.* (anything else)
 \t\t- to see your current score
 Have fun!"""
@@ -121,6 +124,10 @@ class PointBot(irc.IRCClient):
                 lines = HELP.split("\n")
                 for line in lines:
                     self.msg(user, line)
+            elif self.points[msg]:
+                # see if there's a user on file
+                pts = self.points[msg]
+                self.msg(user, "{0} has {1} points".format(msg, pts))
             else:
                 self.msg(user, "You have {0} points".format(self.points[user]))
         else:
