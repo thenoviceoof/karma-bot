@@ -1,7 +1,18 @@
+#!/usr/bin/env python
+################################################################################
+# karma_bot
+# --------------------
+# For tracking karma in the wild-n-wooly IRC world
+#
+# "THE BEER-WARE LICENSE" (Revision 42):
+# <thenoviceoof> wrote this file. As long as you retain this notice you
+# can do whatever you want with this stuff. If we meet some day, and you
+# think this stuff is worth it, you can buy me a beer in return
+################################################################################
+
 # twisted imports
 from twisted.words.protocols import irc
 from twisted.internet import reactor, protocol
-from twisted.python import log
 
 # system imports
 import time, sys
@@ -15,10 +26,42 @@ from sqlalchemy import create_engine
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+################################################################################
+# messages
+USAGE = """
+python {0} <host> <#channel>
+"""
+
+HELP = """ABOUT:
+This is a little bot to keep track of karma on IRC
+USAGE:
+To use {0}, you give each other points like:
+\t10 points to harry!
+\t+2 pts for hermoine
+\t+3 @dumbledore
+or if someone screws up:
+\t-3 points to ron
+To see who has points, message me with:
+\tleaderboard
+\t\t- to see who's doing what
+\thelp
+\t\t- to see this message
+\t<name>
+\t\t- to see their current score
+\t.* (anything else)
+\t\t- to see your current score
+Have fun!"""
+
+################################################################################
+# sql things
+
 Base = declarative_base()
 
+# !! so bad. not going into v1.0
 db_path = ".irc_points.db"
 
+# !! so bad. not going into v1.0
 engine = create_engine('sqlite:///{0}'.format(db_path))
 
 class User(Base):
@@ -31,11 +74,14 @@ class User(Base):
     def __init__(self, name):
         self.name = name
         self.points = 0
+
 def init_db():
     Base.metadata.create_all(engine)
+
 Session = sessionmaker(bind=engine)
 
-class PointLogger:
+# separate out the logging from the client
+class KarmaLogger:
     def __init__(self, db_path):
         self.file = db_path
         self.db = Session()
@@ -61,31 +107,14 @@ class PointLogger:
                   if u.points]
         return reversed(sorted(things, key=itemgetter(1)))
 
-HELP = """ABOUT:
-This is a little bot to keep track of karma on IRC
-USAGE:
-To use {0}, you give each other points like:
-\t10 points to harry!
-\t+2 pts for hermoine
-\t+3 @dumbledore
-or if someone screws up:
-\t-3 points to ron
-To see who has points, message me with:
-\tleaderboard
-\t\t- to see who's doing what
-\thelp
-\t\t- to see this message
-\t<name>
-\t\t- to see their current score
-\t.* (anything else)
-\t\t- to see your current score
-Have fun!"""
+################################################################################
+# IRC things
 
-class PointBot(irc.IRCClient):
-    nickname = "points_bot"
+class KarmaBot(irc.IRCClient):
+    nickname = "karma_bot"
 
     def __init__(self):
-        self.points = PointLogger(db_path)
+        self.points = KarmaLogger(db_path)
 
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
@@ -172,7 +201,7 @@ class PointBot(irc.IRCClient):
         """
         return nickname + '_'
 
-class PointBotFactory(protocol.ClientFactory):
+class KarmaBotFactory(protocol.ClientFactory):
     """A factory for PointBots.
 
     A new protocol instance will be created each time we connect to the server.
@@ -182,7 +211,7 @@ class PointBotFactory(protocol.ClientFactory):
         self.channel = channel
 
     def buildProtocol(self, addr):
-        p = PointBot()
+        p = KarmaBot()
         p.factory = self
         return p
 
@@ -194,10 +223,6 @@ class PointBotFactory(protocol.ClientFactory):
         print "connection failed:", reason
         reactor.stop()
 
-USAGE = """
-python {0} <host> <#channel>
-"""
-
 if __name__ == '__main__':
     init_db()
 
@@ -205,11 +230,8 @@ if __name__ == '__main__':
         print USAGE.format(sys.argv[0])
         sys.exit(0)
 
-    # initialize logging
-    log.startLogging(sys.stdout)
-
     # create factory protocol and application
-    f = PointBotFactory(sys.argv[2])
+    f = KarmaBotFactory(sys.argv[2])
 
     # connect factory to this host and port
     reactor.connectTCP(sys.argv[1], 6667, f)

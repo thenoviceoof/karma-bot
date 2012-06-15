@@ -1,4 +1,18 @@
+karma_bot
+================================================================================
+
 A little bot to track karma in IRC
 
+
 TODO
+--------------------------------------------------------------------------------
  - Build a test-suite using trial
+
+
+LICENSE
+--------------------------------------------------------------------------------
+"THE BEER-WARE LICENSE" (Revision 42):
+
+<thenoviceoof> wrote this file. As long as you retain this notice you
+can do whatever you want with this stuff. If we meet some day, and you
+think this stuff is worth it, you can buy me a beer in return
