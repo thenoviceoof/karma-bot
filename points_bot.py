@@ -107,6 +107,8 @@ class PointBot(irc.IRCClient):
                 sign = {"-": -1}.get(match.group(1), 1)
                 points = sign * int(match.group(2))
                 target = match.group(5)
+                if user == target:
+                    self.msg(user, "Hey! It's not cool giving yourself points")
                 self.points[target] += points
                 print "Match! {0} points for {1}".format(points, target)
 
