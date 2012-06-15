@@ -127,7 +127,8 @@ class PointBot(irc.IRCClient):
             # check if message mentions me
             match = re.search(self.nickname, msg)
             if match:
-                self.msg("Message me 'help' if you are confused")
+                self.msg(user, "Message me 'help' if you seek enlightenment")
+                return
 
             # otherwise, see if it contains a point message
             reg = r"([+-]?)(\d+)\s+(points|pts)\s+(for|to)?\s+\@?(\w+)"
