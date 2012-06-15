@@ -98,13 +98,15 @@ class PointBot(irc.IRCClient):
                     msg = "{0}\t has {1} points".format(target, points)
                     self.msg(user, msg)
                 self.msg(user, "----------------------------------------")
-            return
+            else:
+                self.msg(user, "You have {0} points".format(self.points[user]))
         else:
-            reg = r"\+?(\d+)\s+(points|pts)\s+(for|to)\s+\@?(\w+)"
+            reg = r"([+-]?)(\d+)\s+(points|pts)\s+(for|to)\s+\@?(\w+)"
             match = re.search(reg, msg)
             if match:
-                points = int(match.group(1))
-                target = match.group(4)
+                sign = {"-": -1}.get(match.group(1), 1)
+                points = sign * int(match.group(2))
+                target = match.group(5)
                 self.points[target] += points
                 print "Match! {0} points for {1}".format(points, target)
 
