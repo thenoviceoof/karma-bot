@@ -66,6 +66,7 @@ USAGE:
 To use {0}, you give each other points like:
 \t10 points to harry!
 \t+2 pts for hermoine
+\t+3 @dumbledore
 or if someone screws up:
 \t-3 points to ron
 To see who has points, message me with:
@@ -129,12 +130,22 @@ class PointBot(irc.IRCClient):
                 self.msg("Message me 'help' if you are confused")
 
             # otherwise, see if it contains a point message
-            reg = r"([+-]?)(\d+)\s+(points|pts)\s+(for|to)\s+\@?(\w+)"
+            reg = r"([+-]?)(\d+)\s+(points|pts)\s+(for|to)?\s+\@?(\w+)"
+            creg = r"([+-])(\d+)\s+\@(\w+)"
             match = re.search(reg, msg)
+            cmatch = re.search(creg, msg)
             if match:
                 sign = {"-": -1}.get(match.group(1), 1)
                 points = sign * int(match.group(2))
                 target = match.group(5)
+            elif cmatch:
+                sign = {"-": -1}.get(cmatch.group(1), 1)
+                points = sign * int(cmatch.group(2))
+                target = cmatch.group(3)
+            else:
+                target = ""
+            # check we're doing this
+            if target:
                 if user == target:
                     self.msg(user, "Hey! It's not cool giving yourself points")
                 self.points[target] += points
