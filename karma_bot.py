@@ -167,14 +167,16 @@ class KarmaBot(irc.IRCClient):
                 return
 
             # otherwise, see if it contains a point message
-            reg = r"([+-]?)(\d+)\s+(points|pts)\s+(for|to)?\s+\@?(\w+)"
+            regpart = r"((points|pts)\s+(for|to)|for|to|points|pts)"
+            reg = r"([+-]?)(\d+)\s+{0}\s+\@?(\w+)".format(regpart)
+            print reg
             creg = r"([+-])(\d+)\s+\@(\w+)"
             match = re.search(reg, msg)
             cmatch = re.search(creg, msg)
             if match:
                 sign = {"-": -1}.get(match.group(1), 1)
                 points = sign * int(match.group(2))
-                target = match.group(5)
+                target = match.group(6)
             elif cmatch:
                 sign = {"-": -1}.get(cmatch.group(1), 1)
                 points = sign * int(cmatch.group(2))
