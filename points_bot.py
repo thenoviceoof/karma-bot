@@ -17,7 +17,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 Base = declarative_base()
 
-db_path = "tmp.db"
+db_path = ".irc_points.db"
 
 engine = create_engine('sqlite:///{0}'.format(db_path))
 
@@ -87,21 +87,26 @@ class PointBot(irc.IRCClient):
     def privmsg(self, user, channel, msg):
         """This will get called when the bot receives a message."""
         user = user.split('!', 1)[0]
-        print "{0}\t: {1}".format(user, msg)
+        print "{0}: {1}".format(user, msg)
 
         # Check to see if they're sending me a private message
         if channel == self.nickname:
             if msg == "leaderboard":
+                self.msg(user, "----------------------------------------")
+                self.msg(user, "From high to low:")
                 for target, points in self.points.leaderboard():
-                    self.msg(user, "{0} has {1} points".format(target, points))
+                    msg = "{0}\t has {1} points".format(target, points)
+                    self.msg(user, msg)
+                self.msg(user, "----------------------------------------")
             return
         else:
-            match = re.search("\+(\d+)\s+points for (\w+)", msg)
+            reg = r"\+?(\d+)\s+(points|pts)\s+(for|to)\s+\@?(\w+)"
+            match = re.search(reg, msg)
             if match:
                 points = int(match.group(1))
-                target = match.group(2)
+                target = match.group(4)
                 self.points[target] += points
-
+                print "Match! {0} points for {1}".format(points, target)
 
     # irc callbacks
 
@@ -109,8 +114,9 @@ class PointBot(irc.IRCClient):
     # collisions. The default method appends an underscore.
     def alterCollidedNick(self, nickname):
         """
-        Generate an altered version of a nickname that caused a collision in an
-        effort to create an unused related name for subsequent registration.
+        Generate an altered version of a nickname that caused a
+        collision in an effort to create an unused related name for
+        subsequent registration.
         """
         return nickname + '_'
 
@@ -120,9 +126,8 @@ class PointBotFactory(protocol.ClientFactory):
     A new protocol instance will be created each time we connect to the server.
     """
 
-    def __init__(self, channel, db_path):
+    def __init__(self, channel):
         self.channel = channel
-        self.db_path = db_path
 
     def buildProtocol(self, addr):
         p = PointBot()
@@ -137,19 +142,25 @@ class PointBotFactory(protocol.ClientFactory):
         print "connection failed:", reason
         reactor.stop()
 
+USAGE = """
+python {0} <host> <#channel>
+"""
 
 if __name__ == '__main__':
     init_db()
+
+    if len(sys.argv) != 3:
+        print USAGE.format(sys.argv[0])
+        sys.exit(0)
+
     # initialize logging
     log.startLogging(sys.stdout)
 
     # create factory protocol and application
-    f = PointBotFactory(sys.argv[1], sys.argv[2])
+    f = PointBotFactory(sys.argv[2])
 
     # connect factory to this host and port
-    reactor.connectTCP("flea.voxy.com", 6667, f)
+    reactor.connectTCP(sys.argv[1], 6667, f)
 
     # run bot
     reactor.run()
-
- 
