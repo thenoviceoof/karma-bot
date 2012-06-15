@@ -60,8 +60,23 @@ class PointLogger:
         things = [(u.name,u.points) for u in self.db.query(User).all()]
         return reversed(sorted(things, key=itemgetter(1)))
 
+HELP = """USAGE:
+To use {0}, you give each other points like:
+\t10 points to harry!
+\t+2 pts for hermoine
+or if someone screws up:
+\t-3 points to ron
+To see who has points, message me with:
+\tleaderboard
+\t\t- to see who's doing what
+\thelp
+\t\t- to see this message
+\t.* (anything else)
+\t\t- to see your current score
+Have fun!"""
+
 class PointBot(irc.IRCClient):
-    nickname = "points_tracker"
+    nickname = "points_bot"
 
     def __init__(self):
         self.points = PointLogger(db_path)
@@ -74,6 +89,7 @@ class PointBot(irc.IRCClient):
         irc.IRCClient.connectionLost(self, reason)
         print "[Disconnected at {0}]".format(time.ctime())
 
+    ####################
     # callbacks for events
 
     def signedOn(self):
@@ -98,6 +114,10 @@ class PointBot(irc.IRCClient):
                     msg = "{0}\t has {1} points".format(target, points)
                     self.msg(user, msg)
                 self.msg(user, "----------------------------------------")
+            elif msg == "help":
+                lines = HELP.split("\n")
+                for line in lines:
+                    self.msg(user, line)
             else:
                 self.msg(user, "You have {0} points".format(self.points[user]))
         else:
@@ -112,6 +132,7 @@ class PointBot(irc.IRCClient):
                 self.points[target] += points
                 print "Match! {0} points for {1}".format(points, target)
 
+    ####################
     # irc callbacks
 
     # For fun, override the method that determines how a nickname is changed on
