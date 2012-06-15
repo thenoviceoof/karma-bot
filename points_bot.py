@@ -60,7 +60,9 @@ class PointLogger:
         things = [(u.name,u.points) for u in self.db.query(User).all()]
         return reversed(sorted(things, key=itemgetter(1)))
 
-HELP = """USAGE:
+HELP = """ABOUT:
+This is a little bot to keep track of karma on IRC
+USAGE:
 To use {0}, you give each other points like:
 \t10 points to harry!
 \t+2 pts for hermoine
@@ -121,6 +123,12 @@ class PointBot(irc.IRCClient):
             else:
                 self.msg(user, "You have {0} points".format(self.points[user]))
         else:
+            # check if message mentions me
+            match = re.search(self.nickname, msg)
+            if match:
+                self.msg("Message me 'help' if you are confused")
+
+            # otherwise, see if it contains a point message
             reg = r"([+-]?)(\d+)\s+(points|pts)\s+(for|to)\s+\@?(\w+)"
             match = re.search(reg, msg)
             if match:
