@@ -4,6 +4,16 @@ karma_bot
 A little bot to track karma in IRC
 
 
+USAGE
+--------------------------------------------------------------------------------
+
+    python karma_bot <irc server> <channel>
+
+and then:
+
+    /msg karma_bot help
+
+
 TODO
 --------------------------------------------------------------------------------
  - Build a test-suite using trial
