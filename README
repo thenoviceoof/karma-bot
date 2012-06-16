@@ -17,6 +17,8 @@ and then:
 TODO
 --------------------------------------------------------------------------------
  - Build a test-suite using trial
+ - Implement different point tracking strategies
+   - Partition 1 daily meta-point among the points doled out by each person
 
 
 LICENSE
