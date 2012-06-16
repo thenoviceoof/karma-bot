@@ -237,7 +237,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run a karma bot')
     parser.add_argument('server', type=unicode, help="IRC server domain name")
     parser.add_argument('channel', type=str, help="Channel to join")
-    parser.add_argument('--port', dest="port", type=int, default=6667,
+    parser.add_argument('-p', '--port', dest="port", type=int, default=6667,
                         help="Port to connect to")
 
     args = parser.parse_args()
