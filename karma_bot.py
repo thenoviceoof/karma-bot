@@ -14,18 +14,20 @@
 from twisted.words.protocols import irc
 from twisted.internet import reactor, protocol
 
-# system imports
-import time, sys
-
-import re
-from operator import itemgetter
-
 # sqlalchemy
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+# system imports
+import time
+import sys
+import re
+from operator import itemgetter
+import argparse
+
 
 ################################################################################
 # messages
@@ -228,18 +230,23 @@ class KarmaBotFactory(protocol.ClientFactory):
         print "connection failed:", reason
         reactor.stop()
 
+
 if __name__ == '__main__':
     init_db()
 
-    if len(sys.argv) != 3:
-        print USAGE.format(sys.argv[0])
-        sys.exit(0)
+    parser = argparse.ArgumentParser(description='Run a karma bot')
+    parser.add_argument('server', type=unicode, help="IRC server domain name")
+    parser.add_argument('channel', type=str, help="Channel to join")
+    parser.add_argument('--port', dest="port", type=int, default=6667,
+                        help="Port to connect to")
+
+    args = parser.parse_args()
 
     # create factory protocol and application
-    f = KarmaBotFactory(sys.argv[2])
+    fac = KarmaBotFactory(args.channel)
 
     # connect factory to this host and port
-    reactor.connectTCP(sys.argv[1], 6667, f)
+    reactor.connectTCP(args.server, args.port, fac)
 
     # run bot
     reactor.run()
