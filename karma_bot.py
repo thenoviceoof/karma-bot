@@ -29,12 +29,8 @@ from operator import itemgetter
 import argparse
 import daemon
 
-
 ################################################################################
 # messages
-USAGE = """
-python {0} <host> <#channel>
-"""
 
 HELP = """ABOUT:
 This is a little bot to keep track of karma on IRC
@@ -60,12 +56,7 @@ Have fun!"""
 # sql things
 
 Base = declarative_base()
-
-# !! so bad. not going into v1.0
-db_path = ".irc_points.db"
-
-# !! so bad. not going into v1.0
-engine = create_engine('sqlite:///{0}'.format(db_path))
+Session = sessionmaker()
 
 class User(Base):
     __tablename__ = 'users'
@@ -78,15 +69,9 @@ class User(Base):
         self.name = name
         self.points = 0
 
-def init_db():
-    Base.metadata.create_all(engine)
-
-Session = sessionmaker(bind=engine)
-
 # separate out the logging from the client
 class KarmaLogger:
-    def __init__(self, db_path):
-        self.file = db_path
+    def __init__(self):
         self.db = Session()
     def get_user(self, username):
         user = self.db.query(User).filter_by(name=username).first()
@@ -117,7 +102,7 @@ class KarmaBot(irc.IRCClient):
     nickname = "karma_bot"
 
     def __init__(self):
-        self.points = KarmaLogger(db_path)
+        self.points = KarmaLogger()
 
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
@@ -210,8 +195,8 @@ class KarmaBot(irc.IRCClient):
         return nickname + '_'
 
 class KarmaBotFactory(protocol.ClientFactory):
-    """A factory for PointBots.
-
+    """
+    A factory for PointBots.
     A new protocol instance will be created each time we connect to the server.
     """
 
@@ -231,8 +216,15 @@ class KarmaBotFactory(protocol.ClientFactory):
         print "connection failed:", reason
         reactor.stop()
 
+################################################################################
+# runner scaffolding
 
-def run_irc_bot(server, channel, port):
+def run_irc_bot(server, channel, port, db_path):
+    # set up your db
+    engine = create_engine('sqlite:///{0}'.format(db_path))
+    Session.configure(bind=engine)
+    Base.metadata.create_all(engine)
+
     # create factory protocol and application
     fac = KarmaBotFactory(channel)
     # connect factory to this host and port
@@ -240,28 +232,30 @@ def run_irc_bot(server, channel, port):
     # run bot
     reactor.run()
     
-
 if __name__ == '__main__':
-    init_db()
-
-    parser = argparse.ArgumentParser(description='Run a karma bot')
+    parser = argparse.ArgumentParser(description='Run the karma_bot')
     parser.add_argument('server', type=unicode, help="IRC server domain name")
     parser.add_argument('channel', type=str, help="Channel to join")
     parser.add_argument('-p', '--port', dest="port", type=int, default=6667,
                         help="Port to connect to")
     parser.add_argument('-d', '--daemon', '--daemonize', dest="daemonize",
                         const=True, default=False, action='store_const',
-                        help="Whether to automatically daemonize")
+                        help="Enable automatic daemonization")
+    db_help = "Path to the sqlite file for storage (default=.irc_points.db)"
+    parser.add_argument('-db', '--database', dest="db_path", type=unicode,
+                        default=".irc_points.db", help=db_help)
 
     args = parser.parse_args()
 
     if args.daemonize:
         print "daemonizing..."
         with daemon.DaemonContext():
-            run_irc_bot(server=args.server,
-                        channel=args.channel,
-                        port=args.port)
+            run_irc_bot(server = args.server,
+                        channel = args.channel,
+                        port = args.port,
+                        db_path = args.db_path)
     # otherwise, just run it
-    run_irc_bot(server=args.server,
-                channel=args.channel,
-                port=args.port)
+    run_irc_bot(server = args.server,
+                channel = args.channel,
+                port = args.port,
+                db_path = args.db_path)
