@@ -27,6 +27,7 @@ import sys
 import re
 from operator import itemgetter
 import argparse
+import daemon
 
 
 ################################################################################
@@ -231,6 +232,15 @@ class KarmaBotFactory(protocol.ClientFactory):
         reactor.stop()
 
 
+def run_irc_bot(server, channel, port):
+    # create factory protocol and application
+    fac = KarmaBotFactory(channel)
+    # connect factory to this host and port
+    reactor.connectTCP(server, port, fac)
+    # run bot
+    reactor.run()
+    
+
 if __name__ == '__main__':
     init_db()
 
@@ -239,14 +249,19 @@ if __name__ == '__main__':
     parser.add_argument('channel', type=str, help="Channel to join")
     parser.add_argument('-p', '--port', dest="port", type=int, default=6667,
                         help="Port to connect to")
+    parser.add_argument('-d', '--daemon', '--daemonize', dest="daemonize",
+                        const=True, default=False, action='store_const',
+                        help="Whether to automatically daemonize")
 
     args = parser.parse_args()
 
-    # create factory protocol and application
-    fac = KarmaBotFactory(args.channel)
-
-    # connect factory to this host and port
-    reactor.connectTCP(args.server, args.port, fac)
-
-    # run bot
-    reactor.run()
+    if args.daemonize:
+        print "daemonizing..."
+        with daemon.DaemonContext():
+            run_irc_bot(server=args.server,
+                        channel=args.channel,
+                        port=args.port)
+    # otherwise, just run it
+    run_irc_bot(server=args.server,
+                channel=args.channel,
+                port=args.port)
