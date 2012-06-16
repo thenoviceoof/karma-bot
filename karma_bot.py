@@ -101,9 +101,6 @@ class KarmaLogger:
 class KarmaBot(irc.IRCClient):
     nickname = "karma_bot"
 
-    def __init__(self):
-        self.points = KarmaLogger()
-
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
         print "[Connected at {0}]".format(time.ctime())
@@ -128,12 +125,13 @@ class KarmaBot(irc.IRCClient):
         user = user.split('!', 1)[0]
         print "{0}: {1}".format(user, msg)
 
+        points = self.factory.points
         # Check to see if they're sending me a private message
         if channel == self.nickname:
             if msg == "leaderboard":
                 self.msg(user, "----------------------------------------")
                 self.msg(user, "From high to low:")
-                for target, points in self.points.leaderboard():
+                for target, points in points.leaderboard():
                     msg = "{0}\t has {1} points".format(target, points)
                     self.msg(user, msg)
                 self.msg(user, "----------------------------------------")
@@ -141,12 +139,12 @@ class KarmaBot(irc.IRCClient):
                 lines = HELP.split("\n")
                 for line in lines:
                     self.msg(user, line)
-            elif self.points[msg]:
+            elif points[msg]:
                 # see if there's a user on file
-                pts = self.points[msg]
+                pts = points[msg]
                 self.msg(user, "{0} has {1} points".format(msg, pts))
             else:
-                self.msg(user, "You have {0} points".format(self.points[user]))
+                self.msg(user, "You have {0} points".format(points[user]))
         else:
             # check if message mentions me
             match = re.search(self.nickname, msg)
@@ -163,11 +161,11 @@ class KarmaBot(irc.IRCClient):
             cmatch = re.search(creg, msg)
             if match:
                 sign = {"-": -1}.get(match.group(1), 1)
-                points = sign * int(match.group(2))
+                pts  = sign * int(match.group(2))
                 target = match.group(6)
             elif cmatch:
                 sign = {"-": -1}.get(cmatch.group(1), 1)
-                points = sign * int(cmatch.group(2))
+                pts  = sign * int(cmatch.group(2))
                 target = cmatch.group(3)
             else:
                 target = ""
@@ -175,11 +173,11 @@ class KarmaBot(irc.IRCClient):
             if target:
                 if user == target:
                     self.msg(user, "Hey! It's not cool giving yourself points")
-                if self.points[target] + points > 2**32-1:
+                if points[target] + pts > 2**32-1:
                     self.msg(user, "{0} has too many points Oo".format(user))
                 else:
-                    self.points[target] += points
-                    print "Match! {0} points for {1}".format(points, target)
+                    points[target] += pts
+                    print "Match! {0} points for {1}".format(pts, target)
 
     ####################
     # irc callbacks
@@ -202,6 +200,7 @@ class KarmaBotFactory(protocol.ClientFactory):
 
     def __init__(self, channel):
         self.channel = channel
+        self.points = KarmaLogger()
 
     def buildProtocol(self, addr):
         p = KarmaBot()
