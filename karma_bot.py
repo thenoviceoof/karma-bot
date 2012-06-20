@@ -28,6 +28,7 @@ import re
 from operator import itemgetter
 import argparse
 import daemon
+import os.path
 
 ################################################################################
 # messages
@@ -281,12 +282,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.daemonize:
+        # when daemonizing, we cd "/", so we need an abspath
+        db_path = os.path.abspath(args.db_path)
         print "daemonizing..."
         with daemon.DaemonContext():
             run_irc_bot(server = args.server,
                         channel = args.channel,
                         port = args.port,
-                        db_path = args.db_path)
+                        db_path = db_path)
     # otherwise, just run it
     run_irc_bot(server = args.server,
                 channel = args.channel,
