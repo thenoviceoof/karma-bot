@@ -17,7 +17,7 @@ from twisted.internet import reactor, protocol
 # sqlalchemy
 import sqlalchemy
 from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -64,10 +64,12 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String)
     points = Column(Integer)
+    help = Column(Boolean)
 
     def __init__(self, name):
         self.name = name
         self.points = 0
+        self.help = True
 
 # separate out the logging from the client
 class KarmaLogger:
@@ -80,6 +82,14 @@ class KarmaLogger:
             self.db.add(user)
             self.db.commit()
         return user
+    def help_user(self, username):
+        user = self.get_user(username)
+        if user.help:
+            user.help = False
+            self.db.add(user)
+            self.db.commit()
+            return True
+        return False
     def __getitem__(self, username):
         user = self.get_user(username)
         return user.points
@@ -94,6 +104,30 @@ class KarmaLogger:
         things = [(u.name,u.points) for u in self.db.query(User).all()
                   if u.points]
         return reversed(sorted(things, key=itemgetter(1)))
+
+class Version(Base):
+    __tablename__ = 'version'
+    id = Column(Integer, primary_key=True)
+    version = Column(Integer)
+
+    def __init__(self):
+        self.version = 0
+
+def db_migrate():
+    """Bring the database up to the latest schema"""
+    session = Session()
+    v = session.query(Version).first()
+    if not v:
+        v = Version()
+        session.add(v)
+        session.commit()
+    # 1. apply first migration
+    if v.version == 0:
+        session.execute("ALTER TABLE users ADD COLUMN help boolean;")
+        v.version = 1
+        session.add(v)
+        session.commit()
+    # apply further migrations here
 
 ################################################################################
 # IRC things
@@ -148,14 +182,13 @@ class KarmaBot(irc.IRCClient):
         else:
             # check if message mentions me
             match = re.search(self.nickname, msg)
-            if match:
+            if match and points.help_user(self.nickname):
                 self.msg(user, "Message me 'help' if you seek enlightenment")
                 return
 
             # otherwise, see if it contains a point message
             regpart = r"((points|pts)\s+(for|to)|for|to|points|pts)"
             reg = r"([+-]?)(\d+)\s+{0}\s+\@?(\w+)".format(regpart)
-            print reg
             creg = r"([+-])(\d+)\s+\@(\w+)"
             match = re.search(reg, msg)
             cmatch = re.search(creg, msg)
@@ -223,6 +256,7 @@ def run_irc_bot(server, channel, port, db_path):
     engine = create_engine('sqlite:///{0}'.format(db_path))
     Session.configure(bind=engine)
     Base.metadata.create_all(engine)
+    db_migrate()
 
     # create factory protocol and application
     fac = KarmaBotFactory(channel)
