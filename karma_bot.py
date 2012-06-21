@@ -144,6 +144,16 @@ class KarmaBot(irc.IRCClient):
         irc.IRCClient.connectionLost(self, reason)
         print "[Disconnected at {0}]".format(time.ctime())
 
+    def leaderboard(self, user=None):
+        points = self.factory.points
+        if user is None:
+            user = self.channel
+        self.msg(user, "----------------------------------------")
+        self.msg(user, "From high to low:")
+        for target, points in points.leaderboard():
+            msg = "{0}\t has {1} points".format(target, points)
+            self.msg(user, msg)
+        self.msg(user, "----------------------------------------")
     ####################
     # callbacks for events
 
@@ -153,6 +163,7 @@ class KarmaBot(irc.IRCClient):
 
     def joined(self, channel):
         """This will get called when the bot joins the channel."""
+        self.channel = channel
         print "[Joined {0}]".format(channel)
 
     def privmsg(self, user, channel, msg):
@@ -164,12 +175,7 @@ class KarmaBot(irc.IRCClient):
         # Check to see if they're sending me a private message
         if channel == self.nickname:
             if msg == "leaderboard":
-                self.msg(user, "----------------------------------------")
-                self.msg(user, "From high to low:")
-                for target, points in points.leaderboard():
-                    msg = "{0}\t has {1} points".format(target, points)
-                    self.msg(user, msg)
-                self.msg(user, "----------------------------------------")
+                self.leaderboard(user)
             elif msg == "help":
                 lines = HELP.split("\n")
                 for line in lines:
@@ -181,6 +187,17 @@ class KarmaBot(irc.IRCClient):
             else:
                 self.msg(user, "You have {0} points".format(points[user]))
         else:
+            # check if it's a command
+            match = re.search("{0}!(\w+)".format(self.nickname), msg)
+            if match:
+                command = match.group(1)
+                if command == "leaderboard":
+                    print "Executing command, leaderboard"
+                    self.leaderboard()
+                else:
+                    print "No such command"
+                    self.msg(user, "No such command")
+
             # check if message mentions me
             match = re.search(self.nickname, msg)
             if match and points.help_user(self.nickname):
@@ -228,7 +245,7 @@ class KarmaBot(irc.IRCClient):
 
 class KarmaBotFactory(protocol.ClientFactory):
     """
-    A factory for PointBots.
+    A factory for KarmaBots.
     A new protocol instance will be created each time we connect to the server.
     """
 
