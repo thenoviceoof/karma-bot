@@ -31,7 +31,7 @@ import daemon
 import os.path
 
 import logging
-logging.basicConfig
+logging.basicConfig()
 log = logging.getLogger(__name__)
 
 ################################################################################
@@ -55,6 +55,8 @@ To see who has points, message me with:
 \t\t- to see their current score
 \t.* (anything else)
 \t\t- to see your current score
+Or you can display a leaderboard for all to see on the channel with:
+\tkarma_bot!leaderboard
 Have fun!"""
 
 ################################################################################
