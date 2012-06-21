@@ -30,6 +30,10 @@ import argparse
 import daemon
 import os.path
 
+import logging
+logging.basicConfig
+log = logging.getLogger(__name__)
+
 ################################################################################
 # messages
 
@@ -138,11 +142,11 @@ class KarmaBot(irc.IRCClient):
 
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
-        print "[Connected at {0}]".format(time.ctime())
+        log.info("[Connected at {0}]".format(time.ctime()))
 
     def connectionLost(self, reason):
         irc.IRCClient.connectionLost(self, reason)
-        print "[Disconnected at {0}]".format(time.ctime())
+        log.info("[Disconnected at {0}]".format(time.ctime()))
 
     def leaderboard(self, user=None):
         points = self.factory.points
@@ -164,12 +168,12 @@ class KarmaBot(irc.IRCClient):
     def joined(self, channel):
         """This will get called when the bot joins the channel."""
         self.channel = channel
-        print "[Joined {0}]".format(channel)
+        log.info("[Joined {0}]".format(channel))
 
     def privmsg(self, user, channel, msg):
         """This will get called when the bot receives a message."""
         user = user.split('!', 1)[0]
-        print "{0}: {1}".format(user, msg)
+        log.info("{0}: {1}".format(user, msg))
 
         points = self.factory.points
         # Check to see if they're sending me a private message
@@ -192,7 +196,7 @@ class KarmaBot(irc.IRCClient):
             if match:
                 command = match.group(1)
                 if command == "leaderboard":
-                    print "Executing command, leaderboard"
+                    log.info("Executing command, leaderboard")
                     self.leaderboard()
                 else:
                     print "No such command"
@@ -224,11 +228,13 @@ class KarmaBot(irc.IRCClient):
             if target:
                 if user == target:
                     self.msg(user, "Hey! It's not cool giving yourself points")
+                    log.info("User %s tried to give eyself points" % user)
                 if points[target] + pts > 2**32-1:
-                    self.msg(user, "{0} has too many points Oo".format(user))
+                    self.msg(user, "{0} has too many points".format(user))
+                    log.info("{0} has too many points".format(user))
                 else:
                     points[target] += pts
-                    print "Match! {0} points for {1}".format(pts, target)
+                    log.info("Match! {0} points for {1}".format(pts, target))
 
     ####################
     # irc callbacks
@@ -260,10 +266,11 @@ class KarmaBotFactory(protocol.ClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         """If we get disconnected, reconnect to server."""
+        log.warning("Reconnecting to the server...")
         connector.connect()
 
     def clientConnectionFailed(self, connector, reason):
-        print "connection failed:", reason
+        log.error("connection failed: {0}".format(reason))
         reactor.stop()
 
 ################################################################################
