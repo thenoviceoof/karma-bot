@@ -120,12 +120,14 @@ class Version(Base):
     def __init__(self):
         self.version = 0
 
+LATEST_MIGRATION = 1
 def db_migrate():
     """Bring the database up to the latest schema"""
     session = Session()
     v = session.query(Version).first()
     if not v:
         v = Version()
+        v.version = LATEST_MIGRATION
         session.add(v)
         session.commit()
     # 1. apply first migration
@@ -145,6 +147,7 @@ class KarmaBot(irc.IRCClient):
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
         log.info("[Connected at {0}]".format(time.ctime()))
+        log.info(str(dir(self)))
 
     def connectionLost(self, reason):
         irc.IRCClient.connectionLost(self, reason)

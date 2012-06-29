@@ -1,2 +1,8 @@
 *~
 .irc_points.db
+
+# ignore some virtualenv things
+bin/*
+include/*
+lib/*
+local*
