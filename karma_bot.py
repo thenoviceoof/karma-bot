@@ -13,6 +13,7 @@
 # twisted imports
 from twisted.words.protocols import irc
 from twisted.internet import reactor, protocol
+from twisted.internet import defer
 
 # sqlalchemy
 import sqlalchemy
@@ -147,7 +148,6 @@ class KarmaBot(irc.IRCClient):
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
         log.info("[Connected at {0}]".format(time.ctime()))
-        log.info(str(dir(self)))
 
     def connectionLost(self, reason):
         irc.IRCClient.connectionLost(self, reason)
@@ -163,6 +163,7 @@ class KarmaBot(irc.IRCClient):
             msg = "{0}\t has {1} points".format(target, points)
             self.msg(user, msg)
         self.msg(user, "----------------------------------------")
+
     ####################
     # callbacks for events
 
@@ -174,7 +175,29 @@ class KarmaBot(irc.IRCClient):
         """This will get called when the bot joins the channel."""
         self.channel = channel
         log.info("[Joined {0}]".format(channel))
+        self.names = None
+        self._namescallback = {}
 
+        # kick off getting the names
+        d = self.get_names(self.channel)
+        d.addCallback(self.update_names_list)
+
+    # keep the user pool up-to-date
+    def userJoined(self, user, channel):
+        if self.names is not None:
+            self.names.add(user)
+    def userLeft(self, user, channel):
+        if self.names is not None:
+            self.names.remove(user)
+    def userKicked(self, user, channel):
+        if self.names is not None:
+            self.names.remove(user)
+    def userRenamed(self, oldname, newname):
+        if self.names is not None:
+            self.names.remove(oldname)
+            self.names.add(newname)
+
+    # handle the bulk of the messages
     def privmsg(self, user, channel, msg):
         """This will get called when the bot receives a message."""
         user = user.split('!', 1)[0]
@@ -206,6 +229,7 @@ class KarmaBot(irc.IRCClient):
                 else:
                     print "No such command"
                     self.msg(user, "No such command")
+                return
 
             # check if message mentions me
             match = re.search(self.nickname, msg)
@@ -230,7 +254,13 @@ class KarmaBot(irc.IRCClient):
             else:
                 target = ""
             # check we're doing this
-            if target:
+            if self.names is None:
+                self.msg(user, "Wait a sec, we don't have a name list yet")
+                log.info("<%s> tried to give points too early" % user)
+            elif target not in self.names:
+                self.msg(user, "Can't give points to <%s>, not a user" % target)
+                log.info("<%s> tried to award ghost <%s>" % (user, target))
+            elif target:
                 if user == target:
                     self.msg(user, "Hey! It's not cool giving yourself points")
                     log.info("User %s tried to give eyself points" % user)
@@ -243,6 +273,44 @@ class KarmaBot(irc.IRCClient):
 
     ####################
     # irc callbacks
+
+    def update_names_list(self, names):
+        self.names = set(names)
+        log.info("Got a list of names:")
+        log.info("%s" % str(names))
+
+    # getting a list of names
+    def get_names(self, channel):
+        channel = channel.lower()
+        d = defer.Deferred()
+        if channel not in self._namescallback:
+            self._namescallback[channel] = ([], [])
+
+        self._namescallback[channel][0].append(d)
+        self.sendLine("NAMES %s" % channel)
+        return d
+
+    def irc_RPL_NAMREPLY(self, prefix, params):
+        channel = params[2].lower()
+        nicklist = params[3].split(' ')
+
+        if channel not in self._namescallback:
+            return
+
+        # check if we have to strip off a leading @
+        for i in range(len(nicklist)):
+            if nicklist[i][0] == "@":
+                nicklist[i] = nicklist[i][1:]
+        self._namescallback[channel][1].extend(nicklist)
+    def irc_RPL_ENDOFNAMES(self, prefix, params):
+        channel = params[1].lower()
+        if channel not in self._namescallback:
+            return
+
+        callbacks, namelist = self._namescallback[channel]
+        for cb in callbacks:
+            cb.callback(namelist)
+        del self._namescallback[channel]
 
     # For fun, override the method that determines how a nickname is changed on
     # collisions. The default method appends an underscore.
